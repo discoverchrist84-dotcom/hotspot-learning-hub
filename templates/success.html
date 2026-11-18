@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}You're on the list | {{ EVENT.name }}{% endblock %}
+{% block content %}
+<canvas id="confetti" aria-hidden="true"></canvas>
+<section class="card center" style="margin-top:10px">
+  <svg class="tick" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="26.5"/><path d="M16 29l8 8 16-17"/></svg>
+  <h1 style="font-size:clamp(1.6rem,5vw,2.3rem);color:var(--navy)">{% if already %}You're already on the list{% else %}You're on the waitlist{% endif %}, {{ entry.full_name.split(' ')[0] }}!</h1>
+  <div class="pos">#<span data-count="{{ position }}">{{ position }}</span></div>
+  {% if entry.course %}<p class="picked"><span>{{ COURSE_ICONS.get(entry.course, '') }}</span> {{ entry.course }}</p>{% endif %}
+  <p class="muted">in line for <strong>{{ EVENT.name }}</strong>. We'll contact you at <strong>{{ entry.email }}</strong> and on WhatsApp the moment registration opens.</p>
+
+  <div class="actions">
+    {% if whatsapp_link %}
+    <a class="btn whatsapp" href="{{ whatsapp_link }}" target="_blank" rel="noopener noreferrer">Join the WhatsApp group</a>
+    {% else %}
+    <p class="muted">The WhatsApp group link will be shared with you shortly.</p>
+    {% endif %}
+    <button class="btn ghost" id="share-btn" type="button" data-url="{{ url_for('index', _external=True) }}"
+            data-text="Join the waitlist for {{ EVENT.name }}. {{ EVENT.tagline }}">Invite a friend</button>
+  </div>
+  <p class="muted small">Updates, reminders and announcements will be shared in the group.</p>
+  <p><a href="{{ url_for('index') }}">Back to home</a></p>
+</section>
+{% endblock %}

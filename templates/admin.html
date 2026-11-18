@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | {{ EVENT.name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<section class="stats">
+  <div class="stat up"><span data-count="{{ total }}">{{ total }}</span>Total on waitlist</div>
+  {% for l in levels %}{% if by_level.get(l) %}
+  <div class="stat up" style="--d:.{{ loop.index }}s"><span data-count="{{ by_level[l] }}">{{ by_level[l] }}</span>{{ l }}</div>
+  {% endif %}{% endfor %}
+</section>
+
+<section class="card" style="margin-bottom:18px">
+  <h3 class="panel-title">Interest by course</h3>
+  <div class="bars">
+    {% for name, icon, n in course_stats %}
+    <div class="bar-row">
+      <div class="bar-label"><span>{{ icon }}</span> {{ name }}</div>
+      <div class="bar-track"><div class="bar-fill" style="--w:{{ (n / course_max * 100)|round(1) }}%"></div></div>
+      <div class="bar-n">{{ n }}</div>
+    </div>
+    {% endfor %}
+    {% if unassigned %}<p class="muted small">{{ unassigned }} earlier signup{{ '' if unassigned == 1 else 's' }} joined before course selection was added.</p>{% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <form method="get" class="filters">
+    <input name="q" value="{{ q }}" placeholder="Search name, email, phone, school, department" aria-label="Search">
+    <select name="level" aria-label="Filter by level">
+      <option value="">All levels</option>
+      {% for l in levels %}<option value="{{ l }}" {{ 'selected' if level == l }}>{{ l }}</option>{% endfor %}
+    </select>
+    <select name="course" aria-label="Filter by course">
+      <option value="">All courses</option>
+      {% for c in COURSES %}<option value="{{ c.name }}" {{ 'selected' if course == c.name }}>{{ c.name }}</option>{% endfor %}
+    </select>
+    <button class="btn small navy" type="submit">Filter</button>
+    <a class="btn small ghost" href="{{ url_for('export_csv', q=q, level=level, course=course) }}">Export CSV</a>
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Name</th><th>Email</th><th>WhatsApp</th><th>School</th><th>College</th><th>Department</th><th>Level</th><th>Course</th><th>Joined</th><th></th></tr></thead>
+      <tbody>
+      {% for e in pagination.items %}
+        <tr>
+          <td data-label="#">{{ e.id }}</td>
+          <td data-label="Name"><strong>{{ e.full_name }}</strong></td>
+          <td data-label="Email"><a href="mailto:{{ e.email }}">{{ e.email }}</a></td>
+          <td data-label="WhatsApp">{{ e.phone }} <a class="wa" href="https://wa.me/{{ e.phone|wa_number }}" target="_blank" rel="noopener noreferrer">Chat</a></td>
+          <td data-label="School">{{ e.institution }}</td>
+          <td data-label="College">{{ e.college }}</td>
+          <td data-label="Department">{{ e.department }}</td>
+          <td data-label="Level"><span class="tag">{{ e.level }}</span></td>
+          <td data-label="Course">{% if e.course %}<span class="tag course-tag">{{ COURSE_ICONS.get(e.course, '') }} {{ e.course }}</span>{% else %}<span class="muted">-</span>{% endif %}</td>
+          <td data-label="Joined">{{ e.created_at.strftime('%d %b %Y') if e.created_at }}</td>
+          <td data-label="">
+            <form method="post" action="{{ url_for('admin_delete', entry_id=e.id) }}" class="inline" data-confirm="Remove {{ e.full_name }} from the waitlist?">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <button class="icon-btn" type="submit">Remove</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="11" class="muted">No entries found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <div class="pager">
+    {% if pagination.has_prev %}<a href="{{ url_for('admin', page=pagination.prev_num, q=q, level=level, course=course) }}">&larr; Prev</a>{% else %}<span></span>{% endif %}
+    <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.has_next %}<a href="{{ url_for('admin', page=pagination.next_num, q=q, level=level, course=course) }}">Next &rarr;</a>{% else %}<span></span>{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

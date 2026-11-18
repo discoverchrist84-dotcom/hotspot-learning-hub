@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#271b67">
+  <title>{% block title %}{{ EVENT.name }}{% endblock %}</title>
+  <meta name="description" content="{{ EVENT.name }}. {{ EVENT.tagline }}">
+  <meta property="og:title" content="{{ EVENT.name }}">
+  <meta property="og:description" content="{{ EVENT.tagline }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="bg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('index') }}">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="{{ EVENT.name }} logo" width="27" height="42">
+      <span>{{ EVENT.name }}</span>
+    </a>
+    {% if session.get('is_admin') %}
+    <nav>
+      <a href="{{ url_for('admin') }}">Dashboard</a>
+      <form method="post" action="{{ url_for('admin_logout') }}" class="inline">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="link" type="submit">Log out</button>
+      </form>
+    </nav>
+    {% endif %}
+  </header>
+  <main class="{% block main_class %}{% endblock %}">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flashes">
+        {% for cat, msg in messages %}<div class="flash {{ cat }}" role="alert">{{ msg }}</div>{% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">&copy; <b>{{ EVENT.name }}</b> &middot; Learn. Connect. Grow.</footer>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

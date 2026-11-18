@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <img class="hero-logo up" src="{{ url_for('static', filename='logo.png') }}" alt="{{ EVENT.name }}" width="102" height="160">
+  <p class="eyebrow up" style="--d:.1s"><span class="dot"></span> Waitlist now open</p>
+  <h1 class="up" style="--d:.2s">Welcome to <span class="grad">{{ EVENT.name }}</span></h1>
+  <p class="lead up" style="--d:.3s">{{ EVENT.tagline }}</p>
+  <div class="chips up" style="--d:.4s">
+    <span class="chip">{{ EVENT.date }}</span>
+    {% if total %}<span class="chip alt"><b data-count="{{ total }}">{{ total }}</b> student{{ '' if total == 1 else 's' }} already in</span>{% endif %}
+  </div>
+  <a class="btn small up" style="--d:.5s" href="#join">Join the waitlist &darr;</a>
+</section>
+
+<section class="card reveal" id="join">
+  <h2>Join the waitlist</h2>
+  <p class="muted">Be first in line when registration opens. You'll also get the link to our WhatsApp group.</p>
+  <form method="post" action="{{ url_for('join') }}" id="join-form" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+
+    <div class="step-head"><span class="step-n sm">1</span><div><h3>About you</h3><p class="muted small">So we can reach you when registration opens.</p></div></div>
+    <label>Full name
+      <input name="full_name" value="{{ form.get('full_name', '') }}" required maxlength="120" autocomplete="name" placeholder="e.g. Ada Obi">
+    </label>
+    <div class="row">
+      <label>Email
+        <input type="email" name="email" value="{{ form.get('email', '') }}" required maxlength="160" autocomplete="email" inputmode="email" placeholder="you@example.com">
+      </label>
+      <label>WhatsApp number
+        <input type="tel" name="phone" value="{{ form.get('phone', '') }}" placeholder="e.g. 08012345678" required autocomplete="tel" inputmode="tel">
+      </label>
+    </div>
+    <label>School
+      <input name="institution" value="{{ form.get('institution', '') }}" placeholder="e.g. MOUAU" required maxlength="160">
+    </label>
+    <div class="row">
+      <label>College / Faculty
+        <input name="college" value="{{ form.get('college', '') }}" required maxlength="160">
+      </label>
+      <label>Department
+        <input name="department" value="{{ form.get('department', '') }}" required maxlength="160">
+      </label>
+    </div>
+    <label>Level
+      <select name="level" required>
+        <option value="">Select your level</option>
+        {% for l in levels %}<option value="{{ l }}" {{ 'selected' if form.get('level') == l }}>{{ l }}</option>{% endfor %}
+      </select>
+    </label>
+
+    <div class="step-head course-head"><span class="step-n sm">2</span><div><h3>Choose your course</h3><p class="muted small">Pick the one course you want to join.</p></div></div>
+    <div class="courses" id="course-group" role="radiogroup" aria-label="Choose your course">
+      {% for c in COURSES %}
+      <label class="course">
+        <input type="radio" name="course" value="{{ c.name }}" {{ 'checked' if form.get('course') == c.name }} required>
+        <span class="course-card">
+          <span class="course-check" aria-hidden="true">&#10003;</span>
+          <span class="course-ico" aria-hidden="true">{{ c.icon }}</span>
+          <span class="course-name">{{ c.name }}</span>
+          <span class="course-blurb">{{ c.blurb }}</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <span class="field-error" id="course-error" role="alert"></span>
+
+    <button class="btn" type="submit">Join the waitlist</button>
+  </form>
+</section>
+
+<h2 class="section-title reveal">Courses on offer</h2>
+<section class="course-showcase">
+  {% for c in COURSES %}<div class="showcase reveal" style="--d:.{{ loop.index0 }}s"><span>{{ c.icon }}</span>{{ c.name }}</div>{% endfor %}
+</section>
+
+<h2 class="section-title reveal">How it works</h2>
+<section class="grid3">
+  <div class="tile reveal" style="--d:.0s"><div class="step-n">1</div><h3>Join the waitlist</h3><p>Fill the short form above. It takes under a minute.</p></div>
+  <div class="tile reveal" style="--d:.12s"><div class="step-n">2</div><h3>Join the WhatsApp group</h3><p>Get the group link right after signing up.</p></div>
+  <div class="tile reveal" style="--d:.24s"><div class="step-n">3</div><h3>Get notified</h3><p>You're first in line when registration opens.</p></div>
+</section>
+
+<h2 class="section-title reveal">Who it's for</h2>
+<section class="grid3">
+  <div class="tile reveal" style="--d:.0s"><span class="ico">🎓</span><h3>Every level</h3><p>100, 200, 300 level and beyond.</p></div>
+  <div class="tile reveal" style="--d:.12s"><span class="ico">🧪</span><h3>Every department</h3><p>No matter what you study.</p></div>
+  <div class="tile reveal" style="--d:.24s"><span class="ico">🏛️</span><h3>Every college</h3><p>Open to students from any college.</p></div>
+</section>
+{% endblock %}
