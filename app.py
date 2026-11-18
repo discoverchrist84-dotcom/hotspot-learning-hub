@@ -48,10 +48,21 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
 
+from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 db = SQLAlchemy(app)
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
-WHATSAPP_LINK = os.environ.get("WHATSAPP_LINK", "").strip()
+def _normalise_link(url):
+    """Make 'chat.whatsapp.com/xyz' (no scheme) or a quoted value into a full https link."""
+    url = (url or "").strip().strip("\"'").strip()
+    if url and not re.match(r"^https?://", url, re.I):
+        url = "https://" + url.lstrip("/")
+    return url
+
+
+WHATSAPP_LINK = _normalise_link(os.environ.get("WHATSAPP_LINK", ""))
 EVENT = {
     "name": os.environ.get("EVENT_NAME", "Hotspot Learning Hub"),
     "tagline": os.environ.get(
@@ -229,8 +240,10 @@ def index():
     return render_template("index.html", levels=LEVELS, form={}, total=total)
 
 
-@app.route("/join", methods=["POST"])
+@app.route("/join", methods=["GET", "POST"])
 def join():
+    if request.method == "GET":
+        return redirect(url_for("index") + "#join")
     check_csrf()
     # Honeypot: real people never fill this hidden field
     if request.form.get("website"):
