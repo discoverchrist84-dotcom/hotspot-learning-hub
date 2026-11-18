@@ -111,7 +111,7 @@ input.ok,select.ok{border-color:var(--ok)}
 .tick path{stroke:var(--green);stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:50;stroke-dashoffset:50;animation:draw .5s .7s forwards}
 @keyframes draw{to{stroke-dashoffset:0}}
 .pos{display:inline-block;margin:14px 0 6px;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;padding:10px 26px;
-  border-radius:99px;font-family:"Space Grotesk";font-size:1.5rem;font-weight:700;animation:pop .6s .9s both cubic-bezier(.2,1.6,.4,1)}
+  border-radius:99px;font-family:"Space Grotesk";font-size:1.3rem;font-weight:700;animation:pop .6s .9s both cubic-bezier(.2,1.6,.4,1)}
 @keyframes pop{from{transform:scale(.3);opacity:0}}
 .actions{display:grid;gap:12px;max-width:380px;margin:20px auto 6px}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:50}

@@ -5,9 +5,9 @@
 <section class="card center" style="margin-top:10px">
   <svg class="tick" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="26.5"/><path d="M16 29l8 8 16-17"/></svg>
   <h1 style="font-size:clamp(1.6rem,5vw,2.3rem);color:var(--navy)">{% if already %}You're already on the list{% else %}You're on the waitlist{% endif %}, {{ entry.full_name.split(' ')[0] }}!</h1>
-  <div class="pos">#<span data-count="{{ position }}">{{ position }}</span></div>
+  <div class="pos">You're in!</div>
   {% if entry.course %}<p class="picked"><span>{{ COURSE_ICONS.get(entry.course, '') }}</span> {{ entry.course }}</p>{% endif %}
-  <p class="muted">in line for <strong>{{ EVENT.name }}</strong>. We'll contact you at <strong>{{ entry.email }}</strong> and on WhatsApp the moment registration opens.</p>
+  <p class="muted">You're signed up for the <strong>{{ EVENT.name }}</strong> waitlist. We'll contact you at <strong>{{ entry.email }}</strong> and on WhatsApp the moment registration opens.</p>
 
   <div class="actions">
     {% if whatsapp_link %}

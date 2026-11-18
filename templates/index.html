@@ -7,7 +7,6 @@
   <p class="lead up" style="--d:.3s">{{ EVENT.tagline }}</p>
   <div class="chips up" style="--d:.4s">
     <span class="chip">{{ EVENT.date }}</span>
-    {% if total %}<span class="chip alt"><b data-count="{{ total }}">{{ total }}</b> student{{ '' if total == 1 else 's' }} already in</span>{% endif %}
   </div>
   <a class="btn small up" style="--d:.5s" href="#join">Join the waitlist &darr;</a>
 </section>

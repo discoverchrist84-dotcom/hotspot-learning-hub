@@ -236,8 +236,7 @@ def handle_error(err):
 # ---------------------------------------------------------------- public
 @app.route("/")
 def index():
-    total = db.session.query(func.count(WaitlistEntry.id)).scalar() or 0
-    return render_template("index.html", levels=LEVELS, form={}, total=total)
+    return render_template("index.html", levels=LEVELS, form={})
 
 
 @app.route("/join", methods=["GET", "POST"])
@@ -253,9 +252,7 @@ def join():
     if errors:
         for e in errors:
             flash(e, "error")
-        total = db.session.query(func.count(WaitlistEntry.id)).scalar() or 0
-        return render_template("index.html", levels=LEVELS, form=request.form,
-                               total=total), 400
+        return render_template("index.html", levels=LEVELS, form=request.form), 400
 
     existing = WaitlistEntry.query.filter_by(email=data["email"]).first()
     if existing:
@@ -284,9 +281,7 @@ def success():
     entry = db.session.get(WaitlistEntry, entry_id) if entry_id else None
     if not entry:
         return redirect(url_for("index"))
-    position = (db.session.query(func.count(WaitlistEntry.id))
-                .filter(WaitlistEntry.id <= entry.id).scalar())
-    return render_template("success.html", entry=entry, position=position,
+    return render_template("success.html", entry=entry,
                            already=session.get("already", False),
                            whatsapp_link=WHATSAPP_LINK)
 
