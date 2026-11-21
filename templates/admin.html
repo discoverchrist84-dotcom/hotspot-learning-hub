@@ -32,7 +32,7 @@
     </select>
     <select name="course" aria-label="Filter by course">
       <option value="">All courses</option>
-      {% for c in COURSES %}<option value="{{ c.name }}" {{ 'selected' if course == c.name }}>{{ c.name }}</option>{% endfor %}
+      {% for cn in course_options %}<option value="{{ cn }}" {{ 'selected' if course == cn }}>{{ cn }}</option>{% endfor %}
     </select>
     <button class="btn small navy" type="submit">Filter</button>
     <a class="btn small ghost" href="{{ url_for('export_csv', q=q, level=level, course=course) }}">Export CSV</a>

@@ -1,17 +1,87 @@
 {% extends "base.html" %}
+{% block main_class %}wide{% endblock %}
 {% block content %}
-<section class="hero">
-  <img class="hero-logo up" src="{{ url_for('static', filename='logo.png') }}" alt="{{ EVENT.name }}" width="102" height="160">
-  <p class="eyebrow up" style="--d:.1s"><span class="dot"></span> Waitlist now open</p>
-  <h1 class="up" style="--d:.2s">Welcome to <span class="grad">{{ EVENT.name }}</span></h1>
-  <p class="lead up" style="--d:.3s">{{ EVENT.tagline }}</p>
-  <div class="chips up" style="--d:.4s">
-    <span class="chip">{{ EVENT.date }}</span>
+
+{% macro person(p) %}
+<figure class="person reveal {{ '' if p.revealed else 'mystery' }}">
+  <button type="button" class="zoomable" data-full="{{ url_for('static', filename=p.image) }}" aria-label="Enlarge: {{ p.role }}, {{ p.name }}">
+    <img src="{{ url_for('static', filename=p.image) }}" alt="{{ p.role }}: {{ p.name }}{{ ' (to be revealed)' if not p.revealed }}" width="1000" height="775" loading="lazy">
+    {% if not p.revealed %}<span class="soon-badge">Reveal coming soon</span>{% endif %}
+  </button>
+  <figcaption><span class="role">{{ p.role }}</span><strong>{{ p.name }}</strong>{% if p.note %}<small>{{ p.note }}</small>{% endif %}</figcaption>
+</figure>
+{% endmacro %}
+
+<!-- HERO -->
+<section class="hero2">
+  <div class="hero-copy">
+    <p class="presents up"><span>{{ EVENT.name }}</span> <i class="x">&times;</i> <span>{{ EVENT.partner }}</span> <em>presents</em></p>
+    <h1 class="up" style="--d:.1s"><span class="grad">{{ EVENT.headline }}</span></h1>
+    <div class="wordmark up" style="--d:.2s" aria-label="{{ EVENT.program }}">
+      <span class="tagged">Tagged</span>
+      <span class="wm" aria-hidden="true"><span class="nx">NE<b>X</b>T</span><span class="gn">GEN</span></span>
+      <span class="skill" aria-hidden="true">S k i l l</span>
+    </div>
+    <p class="lead up" style="--d:.3s">{{ EVENT.tagline }}</p>
+
+    {% if EVENT.details_ready %}
+    <div class="chips up" style="--d:.4s">
+      <span class="chip">📅 {{ EVENT.date }}</span>
+      <span class="chip alt">📍 {{ EVENT.venue }}</span>
+    </div>
+    {% else %}
+    <div class="soon-banner up" style="--d:.4s"><span class="soon-text"><b>Date</b> and <b>Venue</b> will be communicated <b>soon!!!</b></span></div>
+    {% endif %}
+
+    <div class="cta-row up" style="--d:.5s">
+      <a class="btn auto" href="#join">Join the waitlist</a>
+      <a class="btn auto ghost" href="#courses">Explore courses</a>
+    </div>
   </div>
-  <a class="btn small up" style="--d:.5s" href="#join">Join the waitlist &darr;</a>
+
+  <div class="poster-wrap up" style="--d:.3s">
+    <button type="button" class="poster zoomable" data-full="{{ url_for('static', filename='img/flyer-main.jpg') }}" aria-label="Enlarge the {{ EVENT.program }} flyer">
+      <img src="{{ url_for('static', filename='img/flyer-main.jpg') }}" alt="{{ EVENT.program }} flyer: {{ EVENT.headline }}" width="1200" height="1200" fetchpriority="high">
+    </button>
+  </div>
 </section>
 
-<section class="card reveal" id="join">
+<!-- KEY FACTS -->
+<section class="strip reveal" aria-label="Programme highlights">
+  <div><b>FREE</b><span>No cost to join</span></div>
+  <div><b>3 Weeks</b><span>Of impact</span></div>
+  <div><b>{{ COURSES|length }} Courses</b><span>Choose the one for you</span></div>
+  <div><b>All Levels</b><span>Every department and college</span></div>
+</section>
+
+<!-- COURSES -->
+<section id="courses" class="section">
+  <h2 class="section-title reveal">Pick your path</h2>
+  <p class="section-sub reveal">{{ EVENT.program }} is a free 3-week programme by {{ EVENT.name }} in partnership with {{ EVENT.partner }}, open to every student, whatever your level, department or college. Choose the course that fits you.</p>
+  <div class="course-grid">
+    {% for c in COURSES %}
+    <button type="button" class="c-card reveal" data-course="{{ c.name }}" style="--d:.{{ loop.index0 }}s">
+      <span class="c-ico" aria-hidden="true">{{ c.icon }}</span>
+      <h3>{{ c.name }}</h3>
+      <p>{{ c.blurb }}</p>
+      <span class="c-pick">Pick this course &rarr;</span>
+    </button>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section">
+  <h2 class="section-title reveal">How it works</h2>
+  <div class="grid3">
+    <div class="tile reveal" style="--d:.0s"><div class="step-n">1</div><h3>Join the waitlist</h3><p>Fill the short form below. It takes under a minute.</p></div>
+    <div class="tile reveal" style="--d:.12s"><div class="step-n">2</div><h3>Join the WhatsApp group</h3><p>Get the group link right after signing up.</p></div>
+    <div class="tile reveal" style="--d:.24s"><div class="step-n">3</div><h3>Get notified</h3><p>You're first in line when registration opens.</p></div>
+  </div>
+</section>
+
+<!-- SIGN-UP FORM -->
+<section class="card form-card reveal" id="join">
   <h2>Join the waitlist</h2>
   <p class="muted">Be first in line when registration opens. You'll also get the link to our WhatsApp group.</p>
   <form method="post" action="{{ url_for('join') }}" id="join-form" novalidate>
@@ -68,22 +138,19 @@
   </form>
 </section>
 
-<h2 class="section-title reveal">Courses on offer</h2>
-<section class="course-showcase">
-  {% for c in COURSES %}<div class="showcase reveal" style="--d:.{{ loop.index0 }}s"><span>{{ c.icon }}</span>{{ c.name }}</div>{% endfor %}
+<!-- TEAM -->
+<section id="team" class="section">
+  <h2 class="section-title reveal">Meet the cohosts</h2>
+  <div class="team-grid">{% for p in COHOSTS %}{{ person(p) }}{% endfor %}</div>
+
+  <h2 class="section-title reveal">Meet the sponsors</h2>
+  <div class="team-grid">{% for p in SPONSORS %}{{ person(p) }}{% endfor %}</div>
 </section>
 
-<h2 class="section-title reveal">How it works</h2>
-<section class="grid3">
-  <div class="tile reveal" style="--d:.0s"><div class="step-n">1</div><h3>Join the waitlist</h3><p>Fill the short form above. It takes under a minute.</p></div>
-  <div class="tile reveal" style="--d:.12s"><div class="step-n">2</div><h3>Join the WhatsApp group</h3><p>Get the group link right after signing up.</p></div>
-  <div class="tile reveal" style="--d:.24s"><div class="step-n">3</div><h3>Get notified</h3><p>You're first in line when registration opens.</p></div>
-</section>
-
-<h2 class="section-title reveal">Who it's for</h2>
-<section class="grid3">
-  <div class="tile reveal" style="--d:.0s"><span class="ico">🎓</span><h3>Every level</h3><p>100, 200, 300 level and beyond.</p></div>
-  <div class="tile reveal" style="--d:.12s"><span class="ico">🧪</span><h3>Every department</h3><p>No matter what you study.</p></div>
-  <div class="tile reveal" style="--d:.24s"><span class="ico">🏛️</span><h3>Every college</h3><p>Open to students from any college.</p></div>
+<!-- CLOSING CALL TO ACTION -->
+<section class="final-cta reveal">
+  <h2>Ready to level up?</h2>
+  <p>Join the waitlist and be first in line when registration opens.</p>
+  <a class="btn auto" href="#join">Join the waitlist</a>
 </section>
 {% endblock %}

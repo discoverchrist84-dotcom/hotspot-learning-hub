@@ -63,26 +63,27 @@ def _normalise_link(url):
 
 
 WHATSAPP_LINK = _normalise_link(os.environ.get("WHATSAPP_LINK", ""))
+_date = os.environ.get("EVENT_DATE", "").strip()
+_venue = os.environ.get("EVENT_VENUE", "").strip()
 EVENT = {
     "name": os.environ.get("EVENT_NAME", "Hotspot Learning Hub"),
+    "partner": os.environ.get("EVENT_PARTNER", "8Digits Komputers"),
+    "program": os.environ.get("EVENT_PROGRAM", "NextGen Skill"),
+    "headline": os.environ.get("EVENT_HEADLINE", "Free 3 Weeks of Impact"),
     "tagline": os.environ.get(
         "EVENT_TAGLINE",
         "Open to every student. Every level. Every department. Every college.",
     ),
-    "date": os.environ.get("EVENT_DATE", "Coming soon"),
+    "date": _date,
+    "venue": _venue,
+    # The "date and venue will be communicated soon" banner shows until BOTH are set.
+    "details_ready": bool(_date and _venue),
 }
 
-COURSES = [
-    {"name": "Python Programming", "icon": "🐍", "blurb": "Build real programs from scratch"},
-    {"name": "Graphics Design", "icon": "🎨", "blurb": "Logos, posters and brand visuals"},
-    {"name": "Video Editing/AI Automation", "icon": "🎬", "blurb": "Edit videos and automate work with AI"},
-    {"name": "Microsoft Application Packages", "icon": "🧰", "blurb": "Word, Excel, PowerPoint and more"},
-    {"name": "Cyber Security", "icon": "🛡️", "blurb": "Protect systems, data and people"},
-    {"name": "Presentation", "icon": "🎤", "blurb": "Pitch and present with confidence"},
-    {"name": "Data Analysis", "icon": "📊", "blurb": "Turn raw data into decisions"},
-]
+from content import COHOSTS, COURSES, LEGACY_COURSES, SPONSORS  # noqa: E402
+
 COURSE_NAMES = [c["name"] for c in COURSES]
-COURSE_ICONS = {c["name"]: c["icon"] for c in COURSES}
+COURSE_ICONS = {**LEGACY_COURSES, **{c["name"]: c["icon"] for c in COURSES}}
 LEVELS = ["100 Level", "200 Level", "300 Level", "400 Level", "500 Level", "Postgraduate"]
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -145,6 +146,8 @@ def csrf_token():
 app.jinja_env.globals["csrf_token"] = csrf_token
 app.jinja_env.globals["EVENT"] = EVENT
 app.jinja_env.globals["COURSES"] = COURSES
+app.jinja_env.globals["COHOSTS"] = COHOSTS
+app.jinja_env.globals["SPONSORS"] = SPONSORS
 app.jinja_env.globals["COURSE_ICONS"] = COURSE_ICONS
 
 
@@ -321,7 +324,7 @@ def filtered_query():
             WaitlistEntry.course.ilike(like)))
     if level in LEVELS:
         query = query.filter(WaitlistEntry.level == level)
-    if course in COURSE_NAMES:
+    if course in COURSE_NAMES or course in LEGACY_COURSES:
         query = query.filter(WaitlistEntry.course == course)
     return query, q, level, course
 
@@ -339,10 +342,14 @@ def admin():
     by_course = dict(db.session.query(WaitlistEntry.course, func.count(WaitlistEntry.id))
                      .group_by(WaitlistEntry.course).all())
     course_stats = [(c["name"], c["icon"], by_course.get(c["name"], 0)) for c in COURSES]
+    extras = [(n, COURSE_ICONS.get(n, "📌"), cnt) for n, cnt in by_course.items()
+              if n and n not in COURSE_NAMES]
+    course_stats += sorted(extras, key=lambda t: -t[2])
+    course_options = COURSE_NAMES + [n for n, _, _ in extras if n in LEGACY_COURSES]
     course_max = max([n for _, _, n in course_stats] + [1])
     return render_template("admin.html", pagination=pagination, total=total,
                            by_level=by_level, levels=LEVELS, q=q, level=level,
-                           course=course, course_stats=course_stats, course_max=course_max,
+                           course=course, course_stats=course_stats, course_options=course_options, course_max=course_max,
                            unassigned=by_course.get(None, 0))
 
 

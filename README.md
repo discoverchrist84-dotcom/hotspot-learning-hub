@@ -26,8 +26,11 @@ Tables are created automatically on first start.
 4. Settings > Networking > Generate Domain.
 The `Procfile` starts gunicorn. `/health` is available for health checks.
 
-## Courses
-The course list lives in `COURSES` at the top of `app.py`. Edit it to add or rename courses. Existing databases get the new `course` column automatically on startup.
+## Editing the content
+- `content.py` holds the course list and the cohost/sponsor cards. To reveal a person, replace their image in `static/team/` and set `"revealed": True`.
+- The "date and venue will be communicated soon" banner shows until you set **both** `EVENT_DATE` and `EVENT_VENUE` in the environment variables.
+- `static/img/flyer-main.jpg` is the hero flyer and the preview image people see when the link is shared on WhatsApp.
+- Existing databases get the `course` column automatically on startup.
 
 ## Next phase
 `status` on each entry (`waiting`, `invited`, `registered`) is already in the table for the registration stage.

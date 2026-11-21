@@ -114,6 +114,45 @@
     });
   }
 
+
+  /* flyer / team image lightbox */
+  var lb = document.getElementById("lightbox");
+  if (lb) {
+    var lbImg = lb.querySelector("img"), lastFocus = null;
+    function closeLb() { lb.hidden = true; document.body.style.overflow = ""; if (lastFocus) lastFocus.focus(); }
+    document.addEventListener("click", function (e) {
+      var z = e.target.closest(".zoomable");
+      if (z) {
+        lastFocus = z; lbImg.src = z.getAttribute("data-full");
+        lbImg.alt = (z.querySelector("img") || {}).alt || "";
+        lb.hidden = false; document.body.style.overflow = "hidden"; lb.querySelector(".lb-close").focus();
+        return;
+      }
+      if (!lb.hidden && (e.target === lb || e.target.closest(".lb-close") || e.target === lbImg)) closeLb();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !lb.hidden) closeLb(); });
+  }
+
+  /* clicking a course card selects it in the form and scrolls there */
+  var joinForm = document.getElementById("join-form");
+  document.querySelectorAll(".c-card[data-course]").forEach(function (card) {
+    card.addEventListener("click", function () {
+      if (!joinForm) return;
+      var name = card.getAttribute("data-course");
+      var radios = joinForm.querySelectorAll("input[name=course]");
+      for (var i = 0; i < radios.length; i++) {
+        if (radios[i].value === name) {
+          radios[i].checked = true; radios[i].dispatchEvent(new Event("change", { bubbles: true }));
+          var tgt = radios[i].nextElementSibling;
+          if (tgt && !reduce) { tgt.classList.remove("flash-pick"); void tgt.offsetWidth; tgt.classList.add("flash-pick"); }
+          break;
+        }
+      }
+      var join = document.getElementById("join");
+      if (join) join.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    });
+  });
+
   /* confetti (success page) */
   var cv = document.getElementById("confetti");
   if (cv && !reduce) {
