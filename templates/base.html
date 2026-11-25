@@ -1,3 +1,4 @@
+{% from "_macros.html" import countdown %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,6 +25,7 @@
 </head>
 <body>
   <div class="bg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="sticky-top">
   <header class="topbar">
     <a class="brand" href="{{ url_for('index') }}">
       <img src="{{ url_for('static', filename='logo.png') }}" alt="{{ EVENT.name }} logo" width="27" height="42">
@@ -38,11 +40,20 @@
       </form>
       {% else %}
       <a class="nav-link" href="{{ url_for('index') }}#courses">Courses</a>
+      <a class="nav-link" href="{{ url_for('index') }}#timetable">Timetable</a>
       <a class="nav-link" href="{{ url_for('index') }}#team">Team</a>
-      <a class="btn small nav-cta" href="{{ url_for('index') }}#join">Join waitlist</a>
+      {% if reg.open %}<a class="btn small nav-cta" href="{{ url_for('index') }}#join">Join waitlist</a>{% endif %}
       {% endif %}
     </nav>
   </header>
+  {% if not session.get('is_admin') %}
+    {% if reg.open and reg.seconds_left is not none %}
+    <div class="close-bar"><span class="cb-label">&#9203; Registration closes in</span>{{ countdown(reg.seconds_left) }}</div>
+    {% elif not reg.open %}
+    <div class="close-bar closed"><span class="cb-label">&#128274; Registration is closed</span></div>
+    {% endif %}
+  {% endif %}
+  </div>
   <main class="{% block main_class %}{% endblock %}">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}

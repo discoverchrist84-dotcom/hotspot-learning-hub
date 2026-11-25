@@ -9,6 +9,8 @@
   {% if entry.course %}<p class="picked"><span>{{ COURSE_ICONS.get(entry.course, '') }}</span> {{ entry.course }}</p>{% endif %}
   <p class="muted">You're signed up for the <strong>{{ EVENT.program }}</strong> waitlist. We'll contact you at <strong>{{ entry.email }}</strong> and on WhatsApp the moment registration opens.</p>
 
+  {% if SCHEDULE %}<p class="when">{% for s in SCHEDULE %}<span>📍 {{ s.day }} at {{ s.venue }} by {{ s.time }}</span>{% endfor %}</p>{% endif %}
+
   <div class="actions">
     {% if whatsapp_link %}
     <a class="btn whatsapp" href="{{ whatsapp_link }}" target="_blank" rel="noopener noreferrer">Join the WhatsApp group</a>
@@ -18,6 +20,19 @@
     <button class="btn ghost" id="share-btn" type="button" data-url="{{ url_for('index', _external=True) }}"
             data-text="Join the waitlist for {{ EVENT.program }}: {{ EVENT.headline }}. {{ EVENT.tagline }}">Invite a friend</button>
   </div>
+  {% if whatsapp_link %}
+  <div class="wa-choose">
+    <p class="wa-q">Use <b>WhatsApp Business</b>, or want to choose the app?</p>
+    {% if wa_intents %}
+    <div class="wa-android">
+      <a class="btn small wa-btn" href="{{ wa_intents.whatsapp }}">Open in WhatsApp</a>
+      <a class="btn small wa-btn biz" href="{{ wa_intents.business }}">Open in WhatsApp Business</a>
+    </div>
+    {% endif %}
+    <button type="button" class="btn small ghost" id="copy-wa" data-link="{{ whatsapp_link }}">Copy group link</button>
+    <p class="muted small wa-tip">Copy the link, then open it from the WhatsApp app you prefer.</p>
+  </div>
+  {% endif %}
   <p class="muted small">Updates, reminders and announcements will be shared in the group.</p>
   <p><a href="{{ url_for('index') }}">Back to home</a></p>
 </section>

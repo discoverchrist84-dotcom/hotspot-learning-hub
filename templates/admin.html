@@ -1,7 +1,48 @@
 {% extends "base.html" %}
+{% from "_macros.html" import countdown %}
 {% block title %}Dashboard | {{ EVENT.name }}{% endblock %}
 {% block main_class %}wide{% endblock %}
 {% block content %}
+<section class="card reg-card up">
+  <div class="reg-head">
+    <h3 class="panel-title">Registration</h3>
+    <span class="status-pill {{ 'open' if reg.open else 'closed' }}">{{ 'Open' if reg.open else 'Closed' }}</span>
+  </div>
+  {% if reg.open and reg.seconds_left is not none %}
+    <p class="reg-line">Closes <b>{{ reg.closes_local }} ({{ reg.tz }})</b> &middot; time left: {{ countdown(reg.seconds_left) }}</p>
+  {% elif reg.open %}
+    <p class="reg-line">Open with <b>no deadline</b>.</p>
+  {% elif reg.reason == 'manual' %}
+    <p class="reg-line">Closed by you. It stays closed until you reopen it.</p>
+  {% else %}
+    <p class="reg-line">The countdown reached zero, so registration closed automatically. It stays closed until you reopen it.</p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('admin_registration') }}" class="reg-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>{{ 'Change the deadline' if reg.open else 'Reopen registration for' }}
+      <select name="preset">
+        <option value="24">24 hours from now</option>
+        <option value="48" selected>2 days from now</option>
+        <option value="72">3 days from now</option>
+        <option value="168">7 days from now</option>
+        <option value="none">No deadline</option>
+        <option value="custom">Custom time (set below)</option>
+      </select>
+    </label>
+    <label>Custom closing time ({{ reg.tz }})
+      <input type="datetime-local" name="custom">
+    </label>
+    <button class="btn small" type="submit" name="action" value="apply">{{ 'Update deadline' if reg.open else 'Reopen registration' }}</button>
+  </form>
+  {% if reg.open %}
+  <form method="post" action="{{ url_for('admin_registration') }}" class="inline" data-confirm="Close registration now? Nobody will be able to sign up until you reopen it.">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn small navy" type="submit" name="action" value="close">Close registration now</button>
+  </form>
+  {% endif %}
+</section>
+
 <section class="stats">
   <div class="stat up"><span data-count="{{ total }}">{{ total }}</span>Total on waitlist</div>
   {% for l in levels %}{% if by_level.get(l) %}

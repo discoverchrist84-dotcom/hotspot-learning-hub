@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import countdown %}
 {% block main_class %}wide{% endblock %}
 {% block content %}
 
@@ -24,7 +25,20 @@
     </div>
     <p class="lead up" style="--d:.3s">{{ EVENT.tagline }}</p>
 
-    {% if EVENT.details_ready %}
+    {% if SCHEDULE %}
+    <div class="schedule up" style="--d:.4s">
+      <p class="sched-title">When &amp; where</p>
+      <div class="sched-grid">
+        {% for s in SCHEDULE %}
+        <div class="sched-card">
+          <span class="sched-day">{{ s.day }}</span>
+          <span class="sched-time">By {{ s.time }}</span>
+          <span class="sched-venue"><i aria-hidden="true">📍</i> {{ s.venue }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% elif EVENT.details_ready %}
     <div class="chips up" style="--d:.4s">
       <span class="chip">📅 {{ EVENT.date }}</span>
       <span class="chip alt">📍 {{ EVENT.venue }}</span>
@@ -33,10 +47,23 @@
     <div class="soon-banner up" style="--d:.4s"><span class="soon-text"><b>Date</b> and <b>Venue</b> will be communicated <b>soon!!!</b></span></div>
     {% endif %}
 
+    {% if reg.open and reg.seconds_left is not none %}
+    <div class="hero-count up" style="--d:.45s">
+      <p>&#9203; Registration closes in</p>
+      {{ countdown(reg.seconds_left, true) }}
+      <small>Closes {{ reg.closes_local }} ({{ reg.tz }})</small>
+    </div>
+    {% endif %}
+
+    {% if reg.open %}
     <div class="cta-row up" style="--d:.5s">
       <a class="btn auto" href="#join">Join the waitlist</a>
       <a class="btn auto ghost" href="#courses">Explore courses</a>
     </div>
+    {% else %}
+    <div class="closed-notice up" style="--d:.45s">&#128274; <b>Registration is closed.</b> Thank you for the amazing interest.</div>
+    <div class="cta-row up" style="--d:.5s"><a class="btn auto ghost" href="#courses">Explore courses</a></div>
+    {% endif %}
   </div>
 
   <div class="poster-wrap up" style="--d:.3s">
@@ -60,14 +87,35 @@
   <p class="section-sub reveal">{{ EVENT.program }} is a free 3-week programme by {{ EVENT.name }} in partnership with {{ EVENT.partner }}, open to every student, whatever your level, department or college. Choose the course that fits you.</p>
   <div class="course-grid">
     {% for c in COURSES %}
-    <button type="button" class="c-card reveal" data-course="{{ c.name }}" style="--d:.{{ loop.index0 }}s">
+    {% set slot = COURSE_SLOTS.get(c.name) %}
+    {% if reg.open %}<button type="button" class="c-card reveal" data-course="{{ c.name }}" style="--d:.{{ loop.index0 }}s">{% else %}<div class="c-card static reveal" style="--d:.{{ loop.index0 }}s">{% endif %}
       <span class="c-ico" aria-hidden="true">{{ c.icon }}</span>
       <h3>{{ c.name }}</h3>
       <p>{{ c.blurb }}</p>
-      <span class="c-pick">Pick this course &rarr;</span>
-    </button>
+      {% if slot %}<span class="c-slot">&#128197; {{ slot.day }} &middot; {{ slot.time }}</span>{% endif %}
+      {% if reg.open %}<span class="c-pick">Pick this course &rarr;</span>{% endif %}
+    {% if reg.open %}</button>{% else %}</div>{% endif %}
     {% endfor %}
   </div>
+</section>
+
+<!-- TIMETABLE -->
+<section id="timetable" class="section">
+  <h2 class="section-title reveal">Lecture timetable</h2>
+  <p class="section-sub reveal">The official {{ EVENT.program }} timetable. Find your course and show up on time.</p>
+  <div class="tt-grid">
+    {% for d in TIMETABLE %}
+    <div class="tt-card reveal" style="--d:.{{ loop.index0 * 2 }}s">
+      <div class="tt-head"><h3>{{ d.day }}</h3><span>&#128205; {{ d.venue }}</span></div>
+      <ul>
+        {% for s in d.slots %}
+        <li><span class="tt-time">{{ s.time }}</span><span class="tt-course">{{ COURSE_ICONS.get(s.course, '') }} {{ s.course }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="tt-note reveal"><button type="button" class="btn small ghost zoomable" data-full="{{ url_for('static', filename='img/timetable.jpg') }}" data-alt="Official {{ EVENT.program }} lecture timetable">View the official timetable flyer</button></p>
 </section>
 
 <!-- HOW IT WORKS -->
@@ -81,6 +129,7 @@
 </section>
 
 <!-- SIGN-UP FORM -->
+{% if reg.open %}
 <section class="card form-card reveal" id="join">
   <h2>Join the waitlist</h2>
   <p class="muted">Be first in line when registration opens. You'll also get the link to our WhatsApp group.</p>
@@ -128,6 +177,7 @@
           <span class="course-ico" aria-hidden="true">{{ c.icon }}</span>
           <span class="course-name">{{ c.name }}</span>
           <span class="course-blurb">{{ c.blurb }}</span>
+          {% set slot = COURSE_SLOTS.get(c.name) %}{% if slot %}<span class="course-slot">&#128197; {{ slot.day }} &middot; {{ slot.time }}</span>{% endif %}
         </span>
       </label>
       {% endfor %}
@@ -137,6 +187,13 @@
     <button class="btn" type="submit">Join the waitlist</button>
   </form>
 </section>
+{% else %}
+<section class="card form-card closed-card reveal" id="join">
+  <div class="lock" aria-hidden="true">&#128274;</div>
+  <h2>Registration is closed</h2>
+  <p class="muted">The countdown has ended, so we are no longer taking sign-ups. Thank you to everyone who joined. If registration reopens, this page will update.</p>
+</section>
+{% endif %}
 
 <!-- TEAM -->
 <section id="team" class="section">
@@ -148,9 +205,11 @@
 </section>
 
 <!-- CLOSING CALL TO ACTION -->
+{% if reg.open %}
 <section class="final-cta reveal">
   <h2>Ready to level up?</h2>
   <p>Join the waitlist and be first in line when registration opens.</p>
   <a class="btn auto" href="#join">Join the waitlist</a>
 </section>
+{% endif %}
 {% endblock %}

@@ -124,7 +124,7 @@
       var z = e.target.closest(".zoomable");
       if (z) {
         lastFocus = z; lbImg.src = z.getAttribute("data-full");
-        lbImg.alt = (z.querySelector("img") || {}).alt || "";
+        lbImg.alt = z.getAttribute("data-alt") || (z.querySelector("img") || {}).alt || "";
         lb.hidden = false; document.body.style.overflow = "hidden"; lb.querySelector(".lb-close").focus();
         return;
       }
@@ -152,6 +152,47 @@
       if (join) join.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     });
   });
+
+
+  /* WhatsApp app choice: Android gets explicit buttons; everyone can copy the link */
+  if (/android/i.test(navigator.userAgent)) document.documentElement.classList.add("is-android");
+  var copyWa = document.getElementById("copy-wa");
+  if (copyWa) {
+    copyWa.addEventListener("click", function () {
+      var link = copyWa.getAttribute("data-link"), old = copyWa.textContent;
+      function done() { copyWa.textContent = "Link copied!"; setTimeout(function () { copyWa.textContent = old; }, 1800); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, function () { window.prompt("Copy this link:", link); });
+      else window.prompt("Copy this link:", link);
+    });
+  }
+
+
+  /* registration countdown: counts down from the server's seconds_left, re-checks the server at zero */
+  var cds = document.querySelectorAll(".cd[data-seconds-left]");
+  if (cds.length) {
+    var endAt = Date.now() + parseInt(cds[0].getAttribute("data-seconds-left"), 10) * 1000;
+    var checking = false;
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+    function paint() {
+      var s = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+      var parts = { d: Math.floor(s / 86400), h: Math.floor((s % 86400) / 3600), m: Math.floor((s % 3600) / 60), s: s % 60 };
+      cds.forEach(function (cd) {
+        cd.classList.toggle("urgent", s < 3600);
+        Object.keys(parts).forEach(function (k) { var el = cd.querySelector('[data-u="' + k + '"]'); if (el) el.textContent = pad(parts[k]); });
+      });
+      document.querySelectorAll(".close-bar:not(.closed)").forEach(function (b) { b.classList.toggle("urgent", s < 3600); });
+      if (s === 0 && !checking) { checking = true; sync(true); }
+    }
+    function sync(atZero) {
+      fetch("/api/registration", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+        if (!d.open || d.seconds_left === null) { window.location.reload(); return; }
+        endAt = Date.now() + d.seconds_left * 1000; checking = false; paint();
+      }).catch(function () { setTimeout(function () { checking = false; }, 5000); });
+    }
+    paint(); setInterval(paint, 1000);
+    setInterval(function () { if (!document.hidden && !checking) sync(false); }, 60000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden && !checking) sync(false); });
+  }
 
   /* confetti (success page) */
   var cv = document.getElementById("confetti");

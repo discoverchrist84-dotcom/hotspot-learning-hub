@@ -9,11 +9,12 @@ import io
 import os
 import re
 import secrets
-from datetime import datetime, timezone
+import math
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from dotenv import load_dotenv
-from flask import (Flask, Response, abort, flash, redirect, render_template,
+from flask import (Flask, Response, abort, flash, g, jsonify, redirect, render_template,
                    request, session, url_for)
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, or_
@@ -53,6 +54,11 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 db = SQLAlchemy(app)
 
+SITE_TZ_HOURS = float(os.environ.get("SITE_TZ_HOURS", "1"))  # Nigeria (WAT) is UTC+1
+SITE_TZ = timezone(timedelta(hours=SITE_TZ_HOURS))
+TZ_LABEL = "WAT" if SITE_TZ_HOURS == 1 else "UTC%+g" % SITE_TZ_HOURS
+DEFAULT_CLOSE_HOURS = float(os.environ.get("REGISTRATION_DEFAULT_HOURS", "48"))
+
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 def _normalise_link(url):
     """Make 'chat.whatsapp.com/xyz' (no scheme) or a quoted value into a full https link."""
@@ -63,6 +69,22 @@ def _normalise_link(url):
 
 
 WHATSAPP_LINK = _normalise_link(os.environ.get("WHATSAPP_LINK", ""))
+
+
+def whatsapp_intents(link):
+    """Android Chrome 'intent' links that open the invite in one specific app.
+    Falls back to the normal https link if that app is not installed."""
+    from urllib.parse import quote
+    m = re.search(r"chat\.whatsapp\.com/([A-Za-z0-9_-]+)", link or "")
+    if not m:
+        return None
+    code, fallback = m.group(1), quote(link, safe="")
+    tpl = "intent://chat.whatsapp.com/%s#Intent;scheme=https;package=%s;S.browser_fallback_url=%s;end"
+    return {"whatsapp": tpl % (code, "com.whatsapp", fallback),
+            "business": tpl % (code, "com.whatsapp.w4b", fallback)}
+
+
+WHATSAPP_INTENTS = whatsapp_intents(WHATSAPP_LINK)
 _date = os.environ.get("EVENT_DATE", "").strip()
 _venue = os.environ.get("EVENT_VENUE", "").strip()
 EVENT = {
@@ -80,7 +102,7 @@ EVENT = {
     "details_ready": bool(_date and _venue),
 }
 
-from content import COHOSTS, COURSES, LEGACY_COURSES, SPONSORS  # noqa: E402
+from content import COHOSTS, COURSES, LEGACY_COURSES, SCHEDULE, SPONSORS, TIMETABLE  # noqa: E402
 
 COURSE_NAMES = [c["name"] for c in COURSES]
 COURSE_ICONS = {**LEGACY_COURSES, **{c["name"]: c["icon"] for c in COURSES}}
@@ -109,6 +131,68 @@ class WaitlistEntry(db.Model):
     )
 
 
+def utcnow():
+    """Naive UTC 'now'. Every datetime in registration_settings is naive UTC."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def local_to_utc(dt_local):
+    return dt_local.replace(tzinfo=SITE_TZ).astimezone(timezone.utc).replace(tzinfo=None)
+
+
+class RegistrationSettings(db.Model):
+    """One row (id=1): when registration closes, and whether the admin closed it by hand."""
+    __tablename__ = "registration_settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    closes_at = db.Column(db.DateTime, nullable=True)  # naive UTC; None means no deadline
+    manually_closed = db.Column(db.Boolean, nullable=False, default=False)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
+
+def _initial_deadline():
+    raw = os.environ.get("REGISTRATION_DEADLINE", "").strip()
+    if raw:
+        try:
+            return local_to_utc(datetime.strptime(raw, "%Y-%m-%d %H:%M"))
+        except ValueError:
+            print("REGISTRATION_DEADLINE ignored (use YYYY-MM-DD HH:MM in site time).")
+    return utcnow() + timedelta(hours=DEFAULT_CLOSE_HOURS)
+
+
+def get_settings():
+    row = db.session.get(RegistrationSettings, 1)
+    if row is None:
+        row = RegistrationSettings(id=1, closes_at=_initial_deadline(), manually_closed=False)
+        db.session.add(row)
+        try:
+            db.session.commit()
+        except Exception:  # the other gunicorn worker created it first
+            db.session.rollback()
+            row = db.session.get(RegistrationSettings, 1)
+    return row
+
+
+def registration_state():
+    """open, why it is closed, seconds left (None = no deadline), and the deadline in site time."""
+    try:
+        row, now = get_settings(), utcnow()
+    except Exception:  # never let a database hiccup break error pages
+        return {"open": True, "reason": "", "seconds_left": None, "closes_local": "", "tz": TZ_LABEL}
+    closes = row.closes_at
+    closes_local = ""
+    if closes:
+        closes_local = closes.replace(tzinfo=timezone.utc).astimezone(SITE_TZ).strftime("%a %d %b %Y, %I:%M %p")
+    state = {"open": True, "reason": "", "seconds_left": None, "closes_local": closes_local, "tz": TZ_LABEL}
+    if row.manually_closed:
+        state.update(open=False, reason="manual", seconds_left=0)
+    elif closes and now >= closes:
+        state.update(open=False, reason="deadline", seconds_left=0)
+    elif closes:
+        state["seconds_left"] = max(1, math.ceil((closes - now).total_seconds()))
+    return state
+
+
 def ensure_schema():
     """Add columns introduced after the first deploy (create_all never alters tables)."""
     from sqlalchemy import inspect, text
@@ -134,6 +218,7 @@ with app.app_context():
         print("=" * 70 + "\n")
         raise
     ensure_schema()
+    get_settings()  # creates the settings row (and starts the countdown) on first deploy
 
 
 # ---------------------------------------------------------------- helpers
@@ -147,8 +232,19 @@ app.jinja_env.globals["csrf_token"] = csrf_token
 app.jinja_env.globals["EVENT"] = EVENT
 app.jinja_env.globals["COURSES"] = COURSES
 app.jinja_env.globals["COHOSTS"] = COHOSTS
+app.jinja_env.globals["SCHEDULE"] = SCHEDULE
 app.jinja_env.globals["SPONSORS"] = SPONSORS
 app.jinja_env.globals["COURSE_ICONS"] = COURSE_ICONS
+app.jinja_env.globals["TIMETABLE"] = TIMETABLE
+app.jinja_env.globals["COURSE_SLOTS"] = {s["course"]: {"day": d["day"], "time": s["time"]}
+                                         for d in TIMETABLE for s in d["slots"]}
+
+
+@app.context_processor
+def inject_registration():
+    if "reg" not in g:
+        g.reg = registration_state()
+    return {"reg": g.reg}
 
 
 def check_csrf():
@@ -247,6 +343,9 @@ def join():
     if request.method == "GET":
         return redirect(url_for("index") + "#join")
     check_csrf()
+    if not registration_state()["open"]:
+        flash("Registration is closed. Thank you for your interest.", "error")
+        return redirect(url_for("index"))
     # Honeypot: real people never fill this hidden field
     if request.form.get("website"):
         return redirect(url_for("index"))
@@ -286,7 +385,7 @@ def success():
         return redirect(url_for("index"))
     return render_template("success.html", entry=entry,
                            already=session.get("already", False),
-                           whatsapp_link=WHATSAPP_LINK)
+                           whatsapp_link=WHATSAPP_LINK, wa_intents=WHATSAPP_INTENTS)
 
 
 # ---------------------------------------------------------------- admin
@@ -353,6 +452,51 @@ def admin():
                            unassigned=by_course.get(None, 0))
 
 
+PRESET_HOURS = {"24": 24, "48": 48, "72": 72, "168": 168}
+
+
+@app.route("/admin/registration", methods=["POST"])
+@admin_required
+def admin_registration():
+    check_csrf()
+    row = get_settings()
+    action = request.form.get("action")
+    if action == "close":
+        row.manually_closed = True
+        msg = "Registration is closed. It stays closed until you reopen it."
+    elif action == "apply":
+        preset = request.form.get("preset", "48")
+        if preset == "none":
+            closes = None
+        elif preset in PRESET_HOURS:
+            closes = utcnow() + timedelta(hours=PRESET_HOURS[preset])
+        elif preset == "custom":
+            raw, closes = request.form.get("custom", "").strip(), None
+            for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"):
+                try:
+                    closes = local_to_utc(datetime.strptime(raw, fmt))
+                    break
+                except ValueError:
+                    continue
+            if closes is None:
+                flash("Pick a valid closing date and time.", "error")
+                return redirect(url_for("admin"))
+            if closes <= utcnow():
+                flash("The closing time must be in the future.", "error")
+                return redirect(url_for("admin"))
+        else:
+            flash("Choose how long registration should stay open.", "error")
+            return redirect(url_for("admin"))
+        row.closes_at, row.manually_closed = closes, False
+        msg = "Registration is open with no deadline." if closes is None else "Registration is open. The new countdown is live."
+    else:
+        abort(400)
+    row.updated_at = utcnow()
+    db.session.commit()
+    flash(msg, "success")
+    return redirect(url_for("admin"))
+
+
 @app.route("/admin/delete/<int:entry_id>", methods=["POST"])
 @admin_required
 def admin_delete(entry_id):
@@ -380,6 +524,14 @@ def export_csv():
                          e.created_at.strftime("%Y-%m-%d %H:%M") if e.created_at else ""])
     return Response(buf.getvalue(), mimetype="text/csv", headers={
         "Content-Disposition": "attachment; filename=waitlist.csv"})
+
+
+@app.route("/api/registration")
+def api_registration():
+    st = registration_state()
+    resp = jsonify(open=st["open"], seconds_left=st["seconds_left"])
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.route("/health")

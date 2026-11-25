@@ -22,5 +22,24 @@ COHOSTS = [
 ]
 SPONSORS = [
     {"name": "Davis", "role": "Sponsor", "note": "", "image": "team/sponsor-davis.jpg", "revealed": True},
-    {"name": "Course Advisor", "role": "Sponsor", "note": "200 Level Comp. Sci.", "image": "team/sponsor-advisor.jpg", "revealed": False},
+    {"name": "Course Advisor", "role": "Sponsor", "note": "200L CMP · Vortex Network", "image": "team/sponsor-advisor.jpg", "revealed": False},
+]
+
+
+# Sessions, shown in the hero and on the success page. Empty this list to show the "coming soon" banner again.
+SCHEDULE = [
+    {"day": "Saturdays", "time": "10AM", "venue": "Old COLPAS"},
+    {"day": "Sundays", "time": "2PM", "venue": "Old COLPAS"},
+]
+
+# Official lecture timetable. "course" must match a course name in COURSES.
+TIMETABLE = [
+    {"day": "Saturdays", "venue": "Old COLPAS", "slots": [
+        {"course": "Python Programming", "time": "10:00AM - 12:00PM"},
+        {"course": "Cyber Security", "time": "12:00PM - 2:00PM"},
+    ]},
+    {"day": "Sundays", "venue": "Old COLPAS", "slots": [
+        {"course": "Graphics Design", "time": "2:00PM - 4:00PM"},
+        {"course": "AI Automation", "time": "4:00PM - 6:00PM"},
+    ]},
 ]

@@ -1,0 +1,10 @@
+{% macro countdown(seconds, big=false) -%}
+{% set d = seconds // 86400 %}{% set h = (seconds % 86400) // 3600 %}{% set m = (seconds % 3600) // 60 %}{% set s = seconds % 60 %}
+{% set L = ['Days', 'Hours', 'Mins', 'Secs'] if big else ['d', 'h', 'm', 's'] -%}
+<span class="cd{{ ' cd-big' if big }}" data-seconds-left="{{ seconds }}" role="timer" aria-label="Time left to register">
+  <span class="cd-u"><b data-u="d">{{ "%02d"|format(d) }}</b><i>{{ L[0] }}</i></span>
+  <span class="cd-u"><b data-u="h">{{ "%02d"|format(h) }}</b><i>{{ L[1] }}</i></span>
+  <span class="cd-u"><b data-u="m">{{ "%02d"|format(m) }}</b><i>{{ L[2] }}</i></span>
+  <span class="cd-u"><b data-u="s">{{ "%02d"|format(s) }}</b><i>{{ L[3] }}</i></span>
+</span>
+{%- endmacro %}
