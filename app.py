@@ -10,6 +10,7 @@ import os
 import re
 import secrets
 import math
+import time
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
@@ -193,32 +194,48 @@ def registration_state():
     return state
 
 
-def ensure_schema():
-    """Add columns introduced after the first deploy (create_all never alters tables)."""
-    from sqlalchemy import inspect, text
-    try:
-        cols = {c["name"] for c in inspect(db.engine).get_columns("waitlist")}
+def _init_schema():
+    """Create tables and add newer columns, all inside ONE transaction.
+
+    On Postgres a transaction-level advisory lock makes parallel gunicorn workers take turns,
+    so two workers can never try to create the same table at once. (A transaction-level lock,
+    unlike a session-level one, is safe with Neon's pooled connections.)"""
+    from sqlalchemy import inspect as sa_inspect, text as sa_text
+    with db.engine.begin() as conn:
+        if conn.dialect.name == "postgresql":
+            conn.execute(sa_text("SELECT pg_advisory_xact_lock(727274)"))
+        db.metadata.create_all(conn)
+        # create_all never alters existing tables, so add columns introduced after the first deploy
+        cols = {c["name"] for c in sa_inspect(conn).get_columns("waitlist")}
         if "course" not in cols:
-            with db.engine.begin() as conn:
-                conn.execute(text("ALTER TABLE waitlist ADD COLUMN course VARCHAR(80)"))
-    except Exception as exc:  # another worker may have added it first
-        db.session.rollback()
-        print("ensure_schema:", exc)
+            conn.execute(sa_text("ALTER TABLE waitlist ADD COLUMN course VARCHAR(80)"))
+
+
+def init_database():
+    from sqlalchemy.exc import IntegrityError, ProgrammingError
+    for attempt in (1, 2, 3):
+        try:
+            _init_schema()
+            break
+        except (IntegrityError, ProgrammingError):
+            # Belt and braces: if another process still beat us to it, wait and re-check.
+            db.session.remove()
+            if attempt == 3:
+                raise
+            time.sleep(1.5)
+        except Exception:
+            host = app.config["SQLALCHEMY_DATABASE_URI"].split("@")[-1].split("/")[0]
+            print("\n" + "=" * 70)
+            print("Could not connect to the database (" + host + ").")
+            print("Check your internet connection, DNS and VPN, and that DATABASE_URL is correct.")
+            print("To work offline, leave DATABASE_URL empty in .env to use local SQLite.")
+            print("=" * 70 + "\n")
+            raise
+    get_settings()  # creates the settings row (and starts the countdown) on first deploy
 
 
 with app.app_context():
-    try:
-        db.create_all()
-    except Exception as exc:
-        host = app.config["SQLALCHEMY_DATABASE_URI"].split("@")[-1].split("/")[0]
-        print("\n" + "=" * 70)
-        print("Could not connect to the database (" + host + ").")
-        print("Check your internet connection, DNS and VPN, and that DATABASE_URL is correct.")
-        print("To work offline, leave DATABASE_URL empty in .env to use local SQLite.")
-        print("=" * 70 + "\n")
-        raise
-    ensure_schema()
-    get_settings()  # creates the settings row (and starts the countdown) on first deploy
+    init_database()
 
 
 # ---------------------------------------------------------------- helpers
